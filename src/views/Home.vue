@@ -1,8 +1,23 @@
 <template>
   <div class="container">
-    <img alt="Vue logo" src="../assets/logo.png" />
-    <HelloWorld msg="Vue 3 + TypeScript + Vite + Vuetify 3" />
+    <img alt="Solana logo" width="200" src="../assets/solana-sol-logo.svg" />
+    <HelloWorld msg="Solana Transaction Explorer" />
     <div class="buttons-container">
+      <v-input messages="['Enter your address']" @value="address">
+        {{ address }}
+      </v-input>
+      <v-list>
+        <v-list-item-group v-model="tokenAccounts">
+          <v-list-item v-for="(item, i) in tokenAccounts" :key="i" two-line>
+            <v-list-item-content>
+              <v-list-item-title>{{ item.short }}</v-list-item-title>
+              <v-list-item-subtitle>{{
+                item.balance.uiAmountString
+              }}</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list-item-group>
+      </v-list>
       <v-btn class="ma-2" color="primary" elevation="0" dark @click="count++">
         <span> Count: {{ count }} </span>
       </v-btn>
@@ -55,16 +70,30 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { computed, ref } from '@vue/runtime-core'
+  import { computed, ref, onMounted } from '@vue/runtime-core'
   import HelloWorld from '../components/HelloWorld.vue'
   import { key } from '../store'
   import { useStore } from 'vuex'
+  import { AddressSpecificQuery } from '@/Data/data'
+  import { offlineDB } from '@/Data/offline'
+  import { TokenAccount } from '@/Model/Token'
 
   const count = ref(0)
+  const address = ref('35tTtkZGrNrt5j3SwBykjb1mkS7Ty8deggZLBDrvxcbA')
 
+  const tokenAccounts = ref([] as TokenAccount[])
+
+  // useLiveQuery(ActiveAddressesQuery, [offlineDB.initialized]) ?? []
   const store = useStore(key)
   const auth = computed(() => {
     return store.getters.getAuth
+  })
+  onMounted(async () => {
+    console.log('mounted!')
+    tokenAccounts.value = await (
+      await AddressSpecificQuery(address.value)
+    )?.getTokenAccounts()
+    console.log(offlineDB, tokenAccounts)
   })
 </script>
 <style scoped lang="scss">
