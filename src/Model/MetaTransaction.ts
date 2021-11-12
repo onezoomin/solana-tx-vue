@@ -5,6 +5,7 @@ import base58 from 'bs58'
 import toDate from 'date-fns/toDate'
 import { formatAddressShort } from '../Utils/js-utils'
 import { getRawTx, serumProgram58 } from '../Utils/solana-utils'
+import { NewOrderInstruction } from './Instructions/NewOrderInstruction'
 // Semantic means "better than parsed" - decoded, parsed, massaged, and reorganized to be human readable
 
 export interface RawTransaction extends solW3.ConfirmedTransaction {
@@ -53,11 +54,19 @@ export class SemanticInstruction extends SemanticInstructionOpts {
   }
 }
 
-const decodePDI = (eachInst) => {
-  if (eachInst.data && eachInst.programId58 === serumProgram58) {
+const decodePDI = (eachInst: solW3.PartiallyDecodedInstruction) => {
+  if (eachInst.data && eachInst.programId.toBase58() === serumProgram58) {
     const dataBytes = base58.decode(eachInst.data)
     try {
       const decData = decodeInstruction(dataBytes)
+      if (decData.hasOwnProperty('newOrderV3')) {
+        const newOrder = new NewOrderInstruction(decData.newOrderV3)
+        console.log(newOrder)
+        return {
+          newOrder,
+          orderInfo: newOrder.short,
+        }
+      }
       return decData
     } catch (e) {
       console.warn(e)
@@ -76,9 +85,10 @@ const semantifySingleInstruction = (
   console.log('semantifying', index, sig.substr(0, 6))
 
   if ((eachI as solW3.PartiallyDecodedInstruction).data) {
-    const { programId, accounts } = eachI as solW3.PartiallyDecodedInstruction
+    const { programId, accounts: rawAccounts } =
+      eachI as solW3.PartiallyDecodedInstruction
     const decodedInstructionObj = decodePDI(eachI)
-
+    const accounts = rawAccounts.map((eachAcc) => eachAcc.toBase58())
     return new SemanticInstruction({
       info: {
         ...decodedInstructionObj,
